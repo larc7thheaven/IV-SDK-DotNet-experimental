@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches: [ ce-1.2.0.59 ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: CompleteEdition-1.2.0.59
+            cl_flags: ""
+          - target: Classic-1.0.7.0-1.0.8.0
+            cl_flags: "/DIVSDK_CLASSIC"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The wrapper uses d3dx9 from the DirectX SDK (June 2010) via $(DXSDK_DIR).
+      # Only the x86 headers/libs are extracted; the SDK installer itself is not run.
+      - name: Cache DirectX SDK (June 2010)
+        id: dxsdk-cache
+        uses: actions/cache@v4
+        with:
+          path: _dxsdk
+          key: dxsdk-jun2010-x86
+
+      - name: Download DirectX SDK (June 2010)
+        if: steps.dxsdk-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          curl.exe -L --fail -o DXSDK_Jun10.exe "https://download.microsoft.com/download/A/E/7/AE743F1F-632B-4809-87A9-AA1BB3458E31/DXSDK_Jun10.exe"
+          7z x DXSDK_Jun10.exe DXSDK/Include -o_dxsdk -y | Out-Null
+          7z x DXSDK_Jun10.exe DXSDK/Lib/x86 -o_dxsdk -y | Out-Null
+          if (-not (Test-Path _dxsdk/DXSDK/Include/d3dx9.h)) { 7z l DXSDK_Jun10.exe | Select-String "d3dx9.h"; throw "d3dx9.h not found in SDK archive" }
+          Remove-Item DXSDK_Jun10.exe
+
+      - name: Set DXSDK_DIR
+        shell: pwsh
+        run: echo "DXSDK_DIR=${{ github.workspace }}\_dxsdk\DXSDK\" >> $env:GITHUB_ENV
+
+      - uses: microsoft/setup-msbuild@v2
+
+      # Builds IVSDKDotNet.asi and (through its project reference) IVSDKDotNetWrapper.dll.
+      # The C# Manager is not built here: it references an external ScriptHookDotNet.dll that is not in this repository.
+      - name: Build native/C++-CLI projects
+        shell: pwsh
+        env:
+          CL: ${{ matrix.cl_flags }}
+        run: |
+          msbuild IVSDKDotNet\IVSDKDotNet.vcxproj /m /nologo /v:minimal `
+            /p:Configuration=Release /p:Platform=Win32 `
+            "/p:SolutionDir=${{ github.workspace }}\\"
+
+      - name: Collect output
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Get-ChildItem Release -File | Where-Object { $_.Extension -in '.asi', '.dll', '.pdb' } | Copy-Item -Destination out
+          New-Item -ItemType Directory out/IVSDK | Out-Null
+          Copy-Item "IVSDKDotNet/Memory Offset Config Files/IVSDK/*.ini" out/IVSDK
+          Copy-Item Documentation/CompleteEdition.md out
+          Get-ChildItem -Recurse out | Format-Table FullName, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IVSDKDotNet-${{ matrix.target }}
+          path: out
