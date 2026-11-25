@@ -5,6 +5,32 @@
 #ifndef INCLUDE_GUARD
 #define INCLUDE_GUARD
 
+// ---------------------------------------------------------------------------------------------
+// Build target: GTA IV Complete Edition (1.2.0.59) vs. classic (1.0.7.0 / 1.0.8.0)
+//
+// Complete Edition changed the memory layout of CVehicle, CPed (incl. PedWeapons) and
+// CPlayerInfo, so the target has to be chosen at compile time. This branch builds for
+// Complete Edition by default. Define IVSDK_CLASSIC to build for 1.0.7.0 / 1.0.8.0 instead.
+// A build refuses to start on a game version it was not compiled for (see AddressSetter::Init).
+// ---------------------------------------------------------------------------------------------
+#if !defined(IVSDK_CLASSIC) && !defined(IVSDK_CE)
+#define IVSDK_CE
+#endif
+
+#ifdef IVSDK_CE
+#define IVSDK_CE_SELECT(classic, ce) ce
+#else
+#define IVSDK_CE_SELECT(classic, ce) classic
+#endif
+
+// Translate a 1.0.8.0 member offset into the build target's offset (used by VALIDATE_OFFSET).
+// CE: 0x50 bytes were removed from CVehicle at 0x210..0x260.
+#define IVSDK_VEH_OFS(o)	IVSDK_CE_SELECT((o), ((o) >= 0x260 ? (o) - 0x50 : (o)))
+// CE: PedWeapons (at CPed+0x2B0) lost its leading 0x18 bytes, 8 bytes were added before 0x484.
+#define IVSDK_PED_OFS(o)	IVSDK_CE_SELECT((o), ((o) >= 0x484 ? (o) - 0x10 : ((o) >= 0x2C8 ? (o) - 0x18 : (o))))
+// CE: 0x10 bytes were added at 0x48..0x4C of CPlayerInfo and 4 bytes removed at 0x4AC..0x4BC.
+#define IVSDK_PLINFO_OFS(o)	IVSDK_CE_SELECT((o), ((o) >= 0x4BC ? (o) + 0xC : ((o) >= 0x4C ? (o) + 0x10 : (o))))
+
 #pragma comment(lib, "version.lib")
 
 namespace plugin

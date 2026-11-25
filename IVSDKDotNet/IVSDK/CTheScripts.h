@@ -20,6 +20,10 @@ public:
 		uint32_t funcPtr = AddressSetter::Get("CTheScripts", "FindNativeAddress");
 		
 		uint32_t nativePtr;
+#ifdef IVSDK_CE
+		// CE: plain __stdcall(hash) instead of the hash being passed in ESI
+		nativePtr = ((uint32_t(__stdcall*)(uint32_t))funcPtr)(nativeHash);
+#else
 		_asm
 		{
 			push esi
@@ -28,6 +32,7 @@ public:
 			pop esi
 			mov nativePtr, eax
 		}
+#endif
 
 		return nativePtr;
 

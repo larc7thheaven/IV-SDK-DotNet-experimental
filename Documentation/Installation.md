@@ -6,7 +6,7 @@ Follow these steps to install **IV-SDK .NET** and start running custom scripts i
 
 ### 1. Prerequisites
 
-- A legal copy of Grand Theft Auto IV version 1.0.8.0 or 1.0.7.0
+- A legal copy of Grand Theft Auto IV version 1.0.8.0 or 1.0.7.0, or Complete Edition 1.2.0.59 with the Complete Edition build (experimental, see [Complete Edition support](CompleteEdition.md))
 - [ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases)
 - [.NET Framework 4.7.2 or higher](https://dotnet.microsoft.com/en-us/download/dotnet-framework)
 - [All-in-one x86 Visual C++ Redistributable Runtimes](https://github.com/abbodi1406/vcredist/releases)

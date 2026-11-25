@@ -60,15 +60,15 @@ namespace rage
 	public:
 		void Close()
 		{
-			((int(__thiscall*)(fiFile*))(AddressSetter::Get(0x0, 0x604D0)))(this);
+			((int(__thiscall*)(fiFile*))(AddressSetter::Get(0x0, 0x604D0, 0xEA80)))(this);
 		}
 		int GetLength()
 		{
-			return ((int(__thiscall*)(fiFile*))(AddressSetter::Get(0x0, 0x60510)))(this);
+			return ((int(__thiscall*)(fiFile*))(AddressSetter::Get(0x0, 0x60510, 0xEAB0)))(this);
 		}
 		int Flush()
 		{
-			return ((int(__thiscall*)(fiFile*))(AddressSetter::Get(0x0, 0x60520)))(this);
+			return ((int(__thiscall*)(fiFile*))(AddressSetter::Get(0x0, 0x60520, 0xEAC0)))(this);
 		}
 
 	};

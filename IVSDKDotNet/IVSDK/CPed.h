@@ -51,7 +51,9 @@ struct PedWeaponSlot
 
 struct PedWeapons
 {
-	uint8_t pad[0x18];													// 00-18 CPed 2B0-2C8
+#ifndef IVSDK_CE
+	uint8_t pad[0x18];													// 00-18 CPed 2B0-2C8 (does not exist on CE: all PedWeapons members are 0x18 lower there)
+#endif
 	uint32_t m_nActiveWeaponSlot;										// 18-1C CPed 2C8-2CC
 	uint8_t pad2[0x10];													// 1C-2C CPed 2CC-2DC
 	CObject* m_pWeaponObject;											// 2C-30 CPed 2DC-2E0
@@ -64,7 +66,7 @@ struct PedWeapons
 	}
 
 };
-//VALIDATE_SIZE(PedWeapons, 0xCC);
+//VALIDATE_SIZE(PedWeapons, IVSDK_CE_SELECT(0xCC, 0xB4));
 //VALIDATE_OFFSET(PedWeapons, m_nActiveWeaponSlot, 0x18);
 //VALIDATE_OFFSET(PedWeapons, m_pWeaponObject, 0x2C);
 //VALIDATE_OFFSET(PedWeapons, m_aWeapons, 0x3C);
@@ -255,7 +257,7 @@ public:																	// 000-210
 	uint8_t pad8[0xC];													// 37C-388
 	uint8_t m_nShootRate;												// 388-389
 	uint8_t m_nAccuracy;												// 389-38A
-	uint8_t pad9[0xFA];													// 38A-484
+	uint8_t pad9[IVSDK_CE_SELECT(0xFA, 0x102)];							// 38A-484 (CE: 372-474; CPed members from here on are -0x10 on CE)
 	CEntity* m_pStandingOnEntity;										// 484-488
 	uint8_t pad10[0x194];												// 488-61C
 	
@@ -353,24 +355,24 @@ public:																	// 000-210
 
 
 
-//VALIDATE_SIZE(CPed, 0xF00);
-//VALIDATE_OFFSET(CPed, m_pCollider, 0x7BC);
-//VALIDATE_OFFSET(CPed, m_fClimbAnimRate, 0x278);
-//VALIDATE_OFFSET(CPed, m_nDeathState, 0xA84);
-//VALIDATE_OFFSET(CPed, m_nCreatedBy, 0xA70);
-//VALIDATE_OFFSET(CPed, m_nPlayerIndex, 0x218);
-//VALIDATE_OFFSET(CPed, m_nRagdollStatus, 0x7C8);
-//VALIDATE_OFFSET(CPed, m_nWeaponObjectVisible, 0x7F1);
-//VALIDATE_OFFSET(CPed, m_fMaxHealth, 0xA94);
-//VALIDATE_OFFSET(CPed, m_fCurrentHeading, 0xAB0);
-//VALIDATE_OFFSET(CPed, m_fDesiredHeading, 0xAB4);
-//VALIDATE_OFFSET(CPed, m_pVehicle, 0xB40);
-//VALIDATE_OFFSET(CPed, m_pDrawableInfo, 0x21C);
-//VALIDATE_OFFSET(CPed, m_nShootRate, 0x388);
-//VALIDATE_OFFSET(CPed, m_nAccuracy, 0x389);
-//VALIDATE_OFFSET(CPed, m_pPedMoveBlendOnFoot, 0xA90);
-//VALIDATE_OFFSET(CPed, m_pComponentModels, 0xEA8);
-//VALIDATE_OFFSET(CPed, m_nVoiceHash, 0x61C);
-//VALIDATE_OFFSET(CPed, m_pStandingOnEntity, 0x484);
-//VALIDATE_OFFSET(CPed, m_pWeaponData, 0x2B0);
-//VALIDATE_OFFSET(CPed, m_nUnkPlayerSettingsRelated, 0xE80);
+//VALIDATE_SIZE(CPed, IVSDK_CE_SELECT(0xF00, 0xEF0));
+//VALIDATE_OFFSET(CPed, m_pCollider, IVSDK_PED_OFS(0x7BC));
+//VALIDATE_OFFSET(CPed, m_fClimbAnimRate, IVSDK_PED_OFS(0x278));
+//VALIDATE_OFFSET(CPed, m_nDeathState, IVSDK_PED_OFS(0xA84));
+//VALIDATE_OFFSET(CPed, m_nCreatedBy, IVSDK_PED_OFS(0xA70));
+//VALIDATE_OFFSET(CPed, m_nPlayerIndex, IVSDK_PED_OFS(0x218));
+//VALIDATE_OFFSET(CPed, m_nRagdollStatus, IVSDK_PED_OFS(0x7C8));
+//VALIDATE_OFFSET(CPed, m_nWeaponObjectVisible, IVSDK_PED_OFS(0x7F1));
+//VALIDATE_OFFSET(CPed, m_fMaxHealth, IVSDK_PED_OFS(0xA94));
+//VALIDATE_OFFSET(CPed, m_fCurrentHeading, IVSDK_PED_OFS(0xAB0));
+//VALIDATE_OFFSET(CPed, m_fDesiredHeading, IVSDK_PED_OFS(0xAB4));
+//VALIDATE_OFFSET(CPed, m_pVehicle, IVSDK_PED_OFS(0xB40));
+//VALIDATE_OFFSET(CPed, m_pDrawableInfo, IVSDK_PED_OFS(0x21C));
+//VALIDATE_OFFSET(CPed, m_nShootRate, IVSDK_PED_OFS(0x388));
+//VALIDATE_OFFSET(CPed, m_nAccuracy, IVSDK_PED_OFS(0x389));
+//VALIDATE_OFFSET(CPed, m_pPedMoveBlendOnFoot, IVSDK_PED_OFS(0xA90));
+//VALIDATE_OFFSET(CPed, m_pComponentModels, IVSDK_PED_OFS(0xEA8));
+//VALIDATE_OFFSET(CPed, m_nVoiceHash, IVSDK_PED_OFS(0x61C));
+//VALIDATE_OFFSET(CPed, m_pStandingOnEntity, IVSDK_PED_OFS(0x484));
+//VALIDATE_OFFSET(CPed, m_pWeaponData, IVSDK_PED_OFS(0x2B0));
+//VALIDATE_OFFSET(CPed, m_nUnkPlayerSettingsRelated, IVSDK_PED_OFS(0xE80));

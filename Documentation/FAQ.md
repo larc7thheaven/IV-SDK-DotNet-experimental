@@ -12,7 +12,7 @@ IV-SDK .NET is a framework that lets you run custom scripts in GTA IV using .NET
 
 ### ❓ What version of GTA IV is supported?
 
-Currently, IV-SDK .NET only has support for version 1.0.8.0 and 1.0.7.0 of GTA IV.
+IV-SDK .NET supports version 1.0.8.0 and 1.0.7.0 of GTA IV. Experimental support for Complete Edition 1.2.0.59 is available as a separate build, see [Complete Edition support](CompleteEdition.md).
 
 ---
 

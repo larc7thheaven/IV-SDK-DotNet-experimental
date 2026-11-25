@@ -94,6 +94,23 @@ namespace AddressSetter
 		// Dertemine the game version
 		DetermineVersion();
 
+		// Class layouts are compiled in, so make sure this build matches the running game
+#ifdef IVSDK_CE
+		if (plugin::gameVer != plugin::VERSION_12059)
+		{
+			MessageBoxA(NULL, std::string("This build of IV-SDK .NET is for GTA IV Complete Edition 1.2.0.59, but the game version is ").append(std::to_string(gCurrentExeVersion)).append(".\nUse a build compiled with IVSDK_CLASSIC for 1.0.7.0 / 1.0.8.0.").c_str(), "IVSDK", MB_ICONERROR);
+			exit(1);
+			return;
+		}
+#else
+		if (plugin::gameVer == plugin::VERSION_12059)
+		{
+			MessageBoxA(NULL, "This build of IV-SDK .NET is for GTA IV 1.0.7.0 / 1.0.8.0, but the game is Complete Edition 1.2.0.59.\nUse a build compiled without IVSDK_CLASSIC.", "IVSDK", MB_ICONERROR);
+			exit(1);
+			return;
+		}
+#endif
+
 		// Load config file according to the game version
 		if (!LoadCurrentVersionConfig())
 		{
@@ -178,6 +195,22 @@ namespace AddressSetter
 
 		return *reinterpret_cast<T*>(nullptr);
 	}
+	// Same as above, with an additional address for GTA IV Complete Edition 1.2.0.59
+	template<typename T>
+	static inline T& GetRef(uint32_t addr1070, uint32_t addr1080, uint32_t addr12059)
+	{
+		if (!bAddressesRead)
+			Init();
+
+		switch (plugin::gameVer)
+		{
+			case plugin::VERSION_12059: return *reinterpret_cast<T*>(gBaseAddress + addr12059);
+			case plugin::VERSION_1080: return *reinterpret_cast<T*>(gBaseAddress + addr1080);
+			case plugin::VERSION_1070: return *reinterpret_cast<T*>(gBaseAddress + addr1070);
+		}
+
+		return *reinterpret_cast<T*>(nullptr);
+	}
 
 	template<typename T>
 	static inline T& GetRef(uint32_t addr)
@@ -203,6 +236,21 @@ namespace AddressSetter
 		{
 			case plugin::VERSION_1080: return gBaseAddress + addr1080;
 			case plugin::VERSION_1070: return gBaseAddress + addr1070;
+		}
+
+		return 0;
+	}
+	// Same as above, with an additional address for GTA IV Complete Edition 1.2.0.59
+	static inline uint32_t Get(uint32_t addr1070, uint32_t addr1080, uint32_t addr12059)
+	{
+		if (!bAddressesRead)
+			Init();
+
+		switch (plugin::gameVer)
+		{
+			case plugin::VERSION_12059: return addr12059 ? gBaseAddress + addr12059 : 0;
+			case plugin::VERSION_1080: return addr1080 ? gBaseAddress + addr1080 : 0;
+			case plugin::VERSION_1070: return addr1070 ? gBaseAddress + addr1070 : 0;
 		}
 
 		return 0;

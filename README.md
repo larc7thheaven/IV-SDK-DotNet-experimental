@@ -9,7 +9,7 @@ It allows you to create and run scripts for *Grand Theft Auto IV* using any .NET
 ⚡ Build powerful GTA IV mods with the full flexibility of .NET!
 
 ## Limitations
-- Only works on GTA IV version 1.0.7.0 and 1.0.8.0 yet 
+- Works on GTA IV version 1.0.7.0 and 1.0.8.0, and (experimental, untested in-game) on Complete Edition 1.2.0.59 – see [Complete Edition support](Documentation/CompleteEdition.md)
 - Not everything from IV-SDK was ported over to IV-SDK .NET yet. More things will be ported/added over time.
 
 Feel free to contribute to this project to get rid of some limitations.  

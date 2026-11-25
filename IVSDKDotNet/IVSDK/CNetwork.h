@@ -16,6 +16,17 @@ public:
 	}
 	static void CheckFramerate(bool bUnk, int time)
 	{
+#ifdef IVSDK_CE
+		// CE: arguments are passed in registers (bUnk in CL, time in EDX)
+		uint32_t funcPtr = AddressSetter::Get("CNetwork", "CheckFramerate");
+		_asm
+		{
+			mov cl, bUnk
+			mov edx, time
+			call funcPtr
+		}
+#else
 		((void(__cdecl*)(bool, int))(AddressSetter::Get("CNetwork", "CheckFramerate")))(bUnk, time);
+#endif
 	}
 };

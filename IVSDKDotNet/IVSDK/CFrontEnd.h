@@ -14,6 +14,11 @@ public:
 	}
 	static void ToggleWaypoint()
 	{
+#ifdef IVSDK_CE
+		// CE: takes the frontend map object in ECX (the game's only caller passes this global object)
+		return ((void(__thiscall*)(void*))(AddressSetter::Get("CFrontEnd", "ToggleWaypoint")))((void*)AddressSetter::Get("CFrontEnd", "ToggleWaypointObject"));
+#else
 		return ((void(__cdecl*)())(AddressSetter::Get("CFrontEnd", "ToggleWaypoint")))();
+#endif
 	}
 };

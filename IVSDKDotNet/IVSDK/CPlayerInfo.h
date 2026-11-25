@@ -6,7 +6,7 @@ class CPlayerInfo
 public:
 	uint8_t pad[0x40];                                                  // 000-040
 	uint64_t m_XUID;													// 040-048
-	uint8_t pad1[0x4];													// 048-04C
+	uint8_t pad1[IVSDK_CE_SELECT(0x4, 0x14)];							// 048-04C (CE: 048-05C; members up to 0x4AC are +0x10 on CE)
 	char m_sName[20];													// 04C-060
 	uint8_t pad2[0x390];												// 060-3F0
 	CPed* m_pPlayerPed2;												// 3F0-3F4
@@ -19,7 +19,7 @@ public:
 	uint32_t m_nLastDroveOnPavementTime;								// 4A0-4A4
 	uint32_t m_nLastRanLightTime;										// 4A4-4A8
 	uint32_t m_nLastDroveAgainstTrafficTime;							// 4A8-4AC
-	uint8_t pad4[0x10];													// 4AC-4BC
+	uint8_t pad4[IVSDK_CE_SELECT(0x10, 0xC)];							// 4AC-4BC (CE: 4BC-4C8; members from here on are +0xC on CE)
 	uint32_t m_nControlFlags;											// 4BC-4C0
 	uint8_t pad5[0x1A];													// 4AC-4DA
 	uint8_t m_nPlayerId;												// 4DA-4DB
@@ -44,7 +44,7 @@ public:
 	CPed* m_pPlayerPed;													// 58C-590
 	uint8_t pad14[0x4];													// 590-594
 	CVehicle* m_pOnlyEnterThisVehicle;									// 594-598
-	uint8_t pad15[0x28];												// 598-5C0
+	uint8_t pad15[IVSDK_CE_SELECT(0x28, 0x2C)];						// 598-5C0 (CE: 5A4-5D0)
 	
 	static bool IsPlayerActive(int id)
 	{
@@ -59,19 +59,19 @@ public:
 		((void(__thiscall*)(CPlayerInfo*))(AddressSetter::Get("CPlayerInfo", "KillPlayerOutsideWorld")))(this);
 	}
 };
-VALIDATE_SIZE(CPlayerInfo, 0x5C0);
-VALIDATE_OFFSET(CPlayerInfo, m_fStamina, 0x414);
-VALIDATE_OFFSET(CPlayerInfo, m_sName, 0x4C);
-VALIDATE_OFFSET(CPlayerInfo, m_nLastHitPedTime, 0x494);
-VALIDATE_OFFSET(CPlayerInfo, m_nPlayerId, 0x4DA);
-VALIDATE_OFFSET(CPlayerInfo, m_nState, 0x4DC);
-VALIDATE_OFFSET(CPlayerInfo, m_nNeverTired, 0x546);
-VALIDATE_OFFSET(CPlayerInfo, m_nMaxHealth, 0x54A);
-VALIDATE_OFFSET(CPlayerInfo, m_nCanDoDriveby, 0x550);
-VALIDATE_OFFSET(CPlayerInfo, m_nMood, 0x55C);
-VALIDATE_OFFSET(CPlayerInfo, m_nTeam, 0x574);
-VALIDATE_OFFSET(CPlayerInfo, m_pPlayerPed, 0x58C);
-VALIDATE_OFFSET(CPlayerInfo, m_nControlFlags, 0x4BC);
+VALIDATE_SIZE(CPlayerInfo, IVSDK_CE_SELECT(0x5C0, 0x5D0));
+VALIDATE_OFFSET(CPlayerInfo, m_fStamina, IVSDK_PLINFO_OFS(0x414));
+VALIDATE_OFFSET(CPlayerInfo, m_sName, IVSDK_PLINFO_OFS(0x4C));
+VALIDATE_OFFSET(CPlayerInfo, m_nLastHitPedTime, IVSDK_PLINFO_OFS(0x494));
+VALIDATE_OFFSET(CPlayerInfo, m_nPlayerId, IVSDK_PLINFO_OFS(0x4DA));
+VALIDATE_OFFSET(CPlayerInfo, m_nState, IVSDK_PLINFO_OFS(0x4DC));
+VALIDATE_OFFSET(CPlayerInfo, m_nNeverTired, IVSDK_PLINFO_OFS(0x546));
+VALIDATE_OFFSET(CPlayerInfo, m_nMaxHealth, IVSDK_PLINFO_OFS(0x54A));
+VALIDATE_OFFSET(CPlayerInfo, m_nCanDoDriveby, IVSDK_PLINFO_OFS(0x550));
+VALIDATE_OFFSET(CPlayerInfo, m_nMood, IVSDK_PLINFO_OFS(0x55C));
+VALIDATE_OFFSET(CPlayerInfo, m_nTeam, IVSDK_PLINFO_OFS(0x574));
+VALIDATE_OFFSET(CPlayerInfo, m_pPlayerPed, IVSDK_PLINFO_OFS(0x58C));
+VALIDATE_OFFSET(CPlayerInfo, m_nControlFlags, IVSDK_PLINFO_OFS(0x4BC));
 
 inline CVector& FindPlayerCentreOfWorld(CVector* v)
 {
