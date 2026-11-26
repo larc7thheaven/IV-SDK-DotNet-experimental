@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  # Official IV-SDK .NET release this branch is based on (provides ScriptHookDotNet.dll for compiling the
+  # Manager, and the non-code files of the package). Pinned by hash.
+  BASE_RELEASE_URL: https://github.com/ClonkAndre/IV-SDK-DotNet/releases/download/1.9.1/IV-SDK.NET.v1.9.1.zip
+  BASE_RELEASE_SHA256: d0ccf6c0c5d87b29d0337eba86947f00c3bb7bf09ad5e355a9bafcb86f7ca973
+
 jobs:
   build:
     name: Build (${{ matrix.target }})
@@ -45,28 +51,57 @@ jobs:
         shell: pwsh
         run: echo "DXSDK_DIR=${{ github.workspace }}\_dxsdk\DXSDK\" >> $env:GITHUB_ENV
 
-      - uses: microsoft/setup-msbuild@v2
+      - name: Download base release
+        shell: pwsh
+        run: |
+          curl.exe -L --fail -o base.zip "$env:BASE_RELEASE_URL"
+          $h = (Get-FileHash base.zip -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne $env:BASE_RELEASE_SHA256) { throw "Base release hash mismatch: $h" }
+          7z x base.zip -o_base -y | Out-Null
+          # Manager.csproj references ScriptHookDotNet.dll from this sibling folder
+          $shdn = Join-Path (Split-Path "${{ github.workspace }}") "ScriptHookDotNet-for-IVSDKDotNet\Debug"
+          New-Item -ItemType Directory -Force $shdn | Out-Null
+          Copy-Item _base/IVSDKDotNet/bin/ScriptHookDotNet.dll $shdn
 
-      # Builds IVSDKDotNet.asi and (through its project reference) IVSDKDotNetWrapper.dll.
-      # The C# Manager is not built here: it references an external ScriptHookDotNet.dll that is not in this repository.
-      - name: Build native/C++-CLI projects
+      - uses: microsoft/setup-msbuild@v2
+      - uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore IVSDKDotNet.sln
+
+      # Builds IVSDKDotNet.asi, IVSDKDotNetWrapper.dll and IVSDKDotNet.Manager.dll.
+      # The Manager must be rebuilt together with the wrapper: the release Manager references the
+      # wrapper by its strong name (signed with the original author's key), which this build cannot reproduce.
+      - name: Build
         shell: pwsh
         env:
           CL: ${{ matrix.cl_flags }}
         run: |
-          msbuild IVSDKDotNet\IVSDKDotNet.vcxproj /m /nologo /v:minimal `
-            /p:Configuration=Release /p:Platform=Win32 `
-            "/p:SolutionDir=${{ github.workspace }}\\"
+          msbuild IVSDKDotNet.sln /t:IVSDKDotNet`;Manager /m /nologo /v:minimal `
+            /p:Configuration=Release /p:Platform=x86
 
-      - name: Collect output
+      - name: Check assembly identities
         shell: pwsh
         run: |
-          New-Item -ItemType Directory out | Out-Null
-          Get-ChildItem Release -File | Where-Object { $_.Extension -in '.asi', '.dll', '.pdb' } | Copy-Item -Destination out
-          New-Item -ItemType Directory out/IVSDK | Out-Null
-          Copy-Item "IVSDKDotNet/Memory Offset Config Files/IVSDK/*.ini" out/IVSDK
+          $w = [Reflection.AssemblyName]::GetAssemblyName("$pwd\Release\IVSDKDotNetWrapper.dll")
+          $m = [Reflection.Assembly]::ReflectionOnlyLoadFrom("$pwd\Manager\bin\x86\Release\IVSDKDotNet.Manager.dll")
+          $ref = $m.GetReferencedAssemblies() | Where-Object Name -eq 'IVSDKDotNetWrapper'
+          "Wrapper:            $($w.FullName)"
+          "Manager references: $($ref.FullName)"
+          if ($ref.FullName -ne $w.FullName) { throw "Manager does not reference the wrapper that was built" }
+
+      - name: Assemble package
+        shell: pwsh
+        run: |
+          Copy-Item _base out -Recurse
+          Copy-Item Release/IVSDKDotNet.asi, Release/IVSDKDotNetWrapper.dll out -Force
+          Copy-Item Release/IVSDKDotNetWrapper.xml out -Force -ErrorAction SilentlyContinue
+          Copy-Item Manager/bin/x86/Release/IVSDKDotNet.Manager.dll out/IVSDKDotNet -Force
+          Copy-Item "IVSDKDotNet/Memory Offset Config Files/IVSDK/*.ini" out/IVSDK -Force
           Copy-Item Documentation/CompleteEdition.md out
-          Get-ChildItem -Recurse out | Format-Table FullName, Length
+          New-Item -ItemType Directory out/pdb | Out-Null
+          Copy-Item Release/*.pdb out/pdb -ErrorAction SilentlyContinue
+          Get-ChildItem -Recurse out -File | ForEach-Object { "{0,10}  {1}" -f $_.Length, $_.FullName.Substring($pwd.Path.Length + 5) }
 
       - uses: actions/upload-artifact@v4
         with:
