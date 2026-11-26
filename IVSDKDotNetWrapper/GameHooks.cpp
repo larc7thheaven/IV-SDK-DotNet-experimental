@@ -6,15 +6,25 @@ namespace IVSDKDotNet
 	namespace Hooking
 	{
 
-
+		void GameHooks::EnsureLazyHook(LazyHook which)
+		{
+			switch (which)
+			{
+				case LazyHook::AddSceneLight:	UnmanagedGameHooks::EnableAddSceneLightHook();	break;
+				case LazyHook::RenderCorona:	UnmanagedGameHooks::EnableRenderCoronaHook();	break;
+			}
+		}
 
 	}
 }
 
+static SRWLOCK gLazyHookLock = SRWLOCK_INIT;
+static bool gAddSceneLightHookDone = false;
+static bool gRenderCoronaHookDone = false;
+
 void UnmanagedGameHooks::Initialize()
 {
-	TryCreateHook("UnmanagedGameHooks", "AddSceneLight", &AddSceneLightHook, (void**)&originalAddSceneLight);
-	TryCreateHook("UnmanagedGameHooks", "RenderCorona", &RenderCoronaHook, (void**)&originalRenderCorona);
+	// AddSceneLight and RenderCorona are not hooked here: see EnableAddSceneLightHook / EnableRenderCoronaHook.
 	TryCreateHook("UnmanagedGameHooks", "GetTrafficLightState1", &GetTrafficLightState1, (void**)&originalGetTrafficLightState1);
 	TryCreateHook("UnmanagedGameHooks", "GetTrafficLightState2", &GetTrafficLightState2, (void**)&originalGetTrafficLightState2);
 	TryCreateHook("UnmanagedGameHooks", "RegisterNative", &RegisterNativeHook, (void**)&originalRegisterNative);
@@ -25,9 +35,44 @@ void UnmanagedGameHooks::Initialize()
 
 	Logger::LogDebug("[GameHooks] Done!");
 }
-bool UnmanagedGameHooks::TryCreateHook(const std::string& section, const std::string& key, LPVOID detour, LPVOID* ppOriginal)
+bool UnmanagedGameHooks::EnableAddSceneLightHook()
+{
+	return EnableLazyHook("AddSceneLight", &AddSceneLightHook, (LPVOID*)&originalAddSceneLight, gAddSceneLightHookDone);
+}
+bool UnmanagedGameHooks::EnableRenderCoronaHook()
+{
+	return EnableLazyHook("RenderCorona", &RenderCoronaHook, (LPVOID*)&originalRenderCorona, gRenderCoronaHookDone);
+}
+bool UnmanagedGameHooks::EnableLazyHook(const char* key, LPVOID detour, LPVOID* ppOriginal, bool& done)
+{
+	AcquireSRWLockExclusive(&gLazyHookLock);
+
+	bool ok = done;
+	if (!done)
+	{
+		// Only attempted once; a failure is logged by TryCreateHook / below and the event simply never fires
+		done = true;
+
+		LPVOID target = nullptr;
+		if (TryCreateHook("UnmanagedGameHooks", key, detour, ppOriginal, &target))
+		{
+			MH_STATUS mhStatus = MH_EnableHook(target);
+			ok = mhStatus == MH_OK;
+
+			if (ok)
+				Logger::LogDebug(String::Format("[GameHooks] Enabled {0} hook on first subscription.", gcnew String(key)));
+			else
+				Logger::LogError(String::Format("[GameHooks] Could not enable {0} hook! Details: {1}", gcnew String(key), gcnew String(MH_StatusToString(mhStatus))));
+		}
+	}
+
+	ReleaseSRWLockExclusive(&gLazyHookLock);
+	return ok;
+}
+bool UnmanagedGameHooks::TryCreateHook(const std::string& section, const std::string& key, LPVOID detour, LPVOID* ppOriginal, LPVOID* pTarget)
 {
 	MH_STATUS mhStatus;
+	LPVOID target;
 
 	// Figure out if config is a pattern or a regular memory address
 	if (AddressSetter::IsConfigPattern(section, key))
@@ -36,13 +81,17 @@ bool UnmanagedGameHooks::TryCreateHook(const std::string& section, const std::st
 
 		assert(!scan.empty());
 
-		mhStatus = MH_CreateHook((LPVOID*)scan.get_first(0), detour, ppOriginal);
-
+		target = (LPVOID)scan.get_first(0);
 	}
 	else
 	{
-		mhStatus = MH_CreateHook((LPVOID*)AddressSetter::Get(section, key), detour, ppOriginal);
+		target = (LPVOID)AddressSetter::Get(section, key);
 	}
+
+	mhStatus = MH_CreateHook(target, detour, ppOriginal);
+
+	if (pTarget)
+		*pTarget = target;
 
 	// Validate
 	if (mhStatus != MH_OK)

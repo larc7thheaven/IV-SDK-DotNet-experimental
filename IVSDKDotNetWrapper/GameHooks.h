@@ -60,8 +60,41 @@ namespace IVSDKDotNet
 			delegate HookCallback<int> OnDoPickupGlowDelegate();
 
 		public:
-			static event AddSceneLightDelegate^ OnAddSceneLight;
-			static event RenderCoronaDelegate^ OnRenderCorona;
+			// AddSceneLight and RenderCorona are hooked lazily: the game functions stay unmodified until a script subscribes.
+			// Light/shadow mods (e.g. Liberty's Shadows / ExtraNightShadows) verify these function bodies and refuse to start
+			// when another module has already detoured them.
+			static event AddSceneLightDelegate^ OnAddSceneLight
+			{
+				void add(AddSceneLightDelegate^ d)
+				{
+					EnsureLazyHook(LazyHook::AddSceneLight);
+					System::Threading::Monitor::Enter(s_eventLock);
+					try { s_onAddSceneLight = (AddSceneLightDelegate^)Delegate::Combine(s_onAddSceneLight, d); }
+					finally { System::Threading::Monitor::Exit(s_eventLock); }
+				}
+				void remove(AddSceneLightDelegate^ d)
+				{
+					System::Threading::Monitor::Enter(s_eventLock);
+					try { s_onAddSceneLight = (AddSceneLightDelegate^)Delegate::Remove(s_onAddSceneLight, d); }
+					finally { System::Threading::Monitor::Exit(s_eventLock); }
+				}
+			}
+			static event RenderCoronaDelegate^ OnRenderCorona
+			{
+				void add(RenderCoronaDelegate^ d)
+				{
+					EnsureLazyHook(LazyHook::RenderCorona);
+					System::Threading::Monitor::Enter(s_eventLock);
+					try { s_onRenderCorona = (RenderCoronaDelegate^)Delegate::Combine(s_onRenderCorona, d); }
+					finally { System::Threading::Monitor::Exit(s_eventLock); }
+				}
+				void remove(RenderCoronaDelegate^ d)
+				{
+					System::Threading::Monitor::Enter(s_eventLock);
+					try { s_onRenderCorona = (RenderCoronaDelegate^)Delegate::Remove(s_onRenderCorona, d); }
+					finally { System::Threading::Monitor::Exit(s_eventLock); }
+				}
+			}
 			static event GetTrafficLightStateDelegate^ OnGetTrafficLightState1;
 			static event GetTrafficLightStateDelegate^ OnGetTrafficLightState2;
 
@@ -76,7 +109,11 @@ namespace IVSDKDotNet
 		internal:
 			static HookCallback<int> RaiseOnAddSceneLight(uint32_t a1, uint32_t nLightType, uint32_t nFlags, CVector* vDir, CVector* vTanDir, CVector* vPos, CVector* vColor, float fIntensity, int32_t texHash, int32_t txdSlot, float fRange, float fInnerConeAngle, float fOuterConeAngle, float fVolIntensity, float fVolSizeScale, int32_t interiorId, uint32_t a15, uint32_t nID)
 			{
-				return OnAddSceneLight(a1,
+				AddSceneLightDelegate^ handlers = s_onAddSceneLight;
+				if (handlers == nullptr)
+					return HookCallback<int>(false);
+
+				return handlers(a1,
 					nLightType,
 					nFlags,
 					CVectorToVector3(*vDir),
@@ -97,7 +134,11 @@ namespace IVSDKDotNet
 			}
 			static HookCallback<int> RaiseOnRenderCorona(int id, uint8_t r, uint8_t g, uint8_t b, float a5, CVector* pos, float range, float a8, float a9, int a10, float a11, char a12, char a13, int a14)
 			{
-				return OnRenderCorona(
+				RenderCoronaDelegate^ handlers = s_onRenderCorona;
+				if (handlers == nullptr)
+					return HookCallback<int>(false);
+
+				return handlers(
 					id,
 					Color::FromArgb(255, r, g, b),
 					a5,
@@ -143,6 +184,17 @@ namespace IVSDKDotNet
 				return OnDoPickupGlow();
 			}
 
+		internal:
+			enum class LazyHook { AddSceneLight, RenderCorona };
+
+		private:
+			// Creates and enables the native hook on first use (defined in GameHooks.cpp)
+			static void EnsureLazyHook(LazyHook which);
+
+			static Object^ s_eventLock = gcnew Object();
+			static AddSceneLightDelegate^ s_onAddSceneLight;
+			static RenderCoronaDelegate^ s_onRenderCorona;
+
 		};
 
 	}
@@ -153,8 +205,13 @@ class UnmanagedGameHooks
 public:
 	static void Initialize();
 
+	// Hooks that are only installed once a script subscribes to the matching GameHooks event
+	static bool EnableAddSceneLightHook();
+	static bool EnableRenderCoronaHook();
+
 private:
-	static bool TryCreateHook(const std::string& section, const std::string& key, LPVOID detour, LPVOID* ppOriginal);
+	static bool TryCreateHook(const std::string& section, const std::string& key, LPVOID detour, LPVOID* ppOriginal, LPVOID* pTarget = nullptr);
+	static bool EnableLazyHook(const char* key, LPVOID detour, LPVOID* ppOriginal, bool& done);
 
 private:
 	static inline AddSceneLightT* originalAddSceneLight = nullptr;
