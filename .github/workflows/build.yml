@@ -82,7 +82,7 @@ jobs:
             /p:Configuration=Release /p:Platform=x86
 
       - name: Check assembly identities
-        shell: pwsh
+        shell: powershell   # Windows PowerShell 5.1 (.NET Framework) for ReflectionOnlyLoadFrom
         run: |
           $w = [Reflection.AssemblyName]::GetAssemblyName("$pwd\Release\IVSDKDotNetWrapper.dll")
           $m = [Reflection.Assembly]::ReflectionOnlyLoadFrom("$pwd\Manager\bin\x86\Release\IVSDKDotNet.Manager.dll")
