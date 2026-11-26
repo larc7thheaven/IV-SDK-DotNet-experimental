@@ -1,0 +1,10 @@
+{
+  "solution": {
+    "path": "IVSDKDotNet.sln",
+    "projects": [
+      "IVSDKDotNet\\IVSDKDotNet.vcxproj",
+      "IVSDKDotNetWrapper\\IVSDKDotNetWrapper.vcxproj",
+      "Manager\\Manager.csproj"
+    ]
+  }
+}
