@@ -69,6 +69,18 @@ jobs:
       - name: Restore NuGet packages
         run: nuget restore IVSDKDotNet.sln -PackagesDirectory packages
 
+      # The solution configures the Manager for Release|x86 but does not build it there (ActiveCfg without Build.0).
+      - name: Enable Manager in the Release|x86 solution configuration (CI only)
+        shell: pwsh
+        run: |
+          $sln = Get-Content IVSDKDotNet.sln -Raw
+          $line = '{3ED335CE-7C16-49C7-AC50-E8A8D9700DF3}.Release|x86.ActiveCfg = Release|x86'
+          if (-not $sln.Contains($line)) { throw "Manager Release|x86 mapping not found" }
+          if (-not $sln.Contains('{3ED335CE-7C16-49C7-AC50-E8A8D9700DF3}.Release|x86.Build.0')) {
+            $sln = $sln.Replace($line, $line + "`r`n`t`t" + '{3ED335CE-7C16-49C7-AC50-E8A8D9700DF3}.Release|x86.Build.0 = Release|x86')
+            Set-Content IVSDKDotNet.sln $sln -NoNewline
+          }
+
       # Builds IVSDKDotNet.asi, IVSDKDotNetWrapper.dll and IVSDKDotNet.Manager.dll.
       # The Manager must be rebuilt together with the wrapper: the release Manager references the
       # wrapper by its strong name (signed with the original author's key), which this build cannot reproduce.
