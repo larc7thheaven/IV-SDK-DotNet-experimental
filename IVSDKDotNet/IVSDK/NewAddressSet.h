@@ -1,4 +1,6 @@
 #include <filesystem>
+#include <string>
+#include <unordered_map>
 
 namespace AddressSetter
 {
@@ -7,6 +9,54 @@ namespace AddressSetter
 	static bool bAddressesRead = false;
 
 	static INI<>* gLoadedConfig = nullptr;
+
+	// All config values, resolved once by Init() into a read-only table. Lookups never touch the INI parser
+	// afterwards: INI::get(section, key) selects the section through a shared pointer, so concurrent lookups
+	// (game and render thread) could read a key from the wrong section, and parsing on every call is slow.
+	struct ConfigValue
+	{
+		std::string text;		// raw value from the config file
+		uint32_t value = 0;		// parsed address (patterns: resolved on first use)
+		bool isPattern = false;
+		bool resolved = false;
+	};
+	static std::unordered_map<std::string, ConfigValue> gConfigValues;
+	static SRWLOCK gPatternLock = SRWLOCK_INIT;
+
+	static inline std::string MakeConfigKey(const std::string& section, const std::string& key)
+	{
+		std::string k;
+		k.reserve(section.size() + key.size() + 1);
+		k.append(section).push_back('\x1F');
+		k.append(key);
+		return k;
+	}
+	static inline void BuildConfigCache()
+	{
+		gConfigValues.clear();
+		gConfigValues.reserve(1024);
+
+		for (auto& section : gLoadedConfig->sections)
+		{
+			if (!section.second)
+				continue;
+
+			for (auto& entry : *section.second)
+			{
+				ConfigValue v;
+				v.text = entry.second;
+				v.isPattern = !(v.text.rfind("0x", 0) == 0 || v.text.rfind("0X", 0) == 0);
+
+				if (!v.isPattern)
+				{
+					v.value = static_cast<uint32_t>(std::stoul(v.text, nullptr, 16));
+					v.resolved = true;
+				}
+
+				gConfigValues.emplace(MakeConfigKey(section.first, entry.first), std::move(v));
+			}
+		}
+	}
 
 	static inline bool DoesFileExists(const std::string& name)
 	{
@@ -119,65 +169,59 @@ namespace AddressSetter
 			return;
 		}
 
+		BuildConfigCache();
+
 		bAddressesRead = true;
+	}
+
+	static inline const ConfigValue* FindConfigValue(const std::string& section, const std::string& key)
+	{
+		if (!bAddressesRead)
+			Init();
+
+		auto it = gConfigValues.find(MakeConfigKey(section, key));
+		return it == gConfigValues.end() ? nullptr : &it->second;
 	}
 
 	static inline bool IsConfigPattern(const std::string& section, const std::string& key)
 	{
-		if (!bAddressesRead)
-			Init();
-
-		// Get string from section
-		std::string str = gLoadedConfig->get(section, key, std::string());
-
-		if (str.empty())
-			return false;
-		if (str.find("0x") == 0 || str.find("0X") == 0)
-			return false;
-
-		return true;
+		const ConfigValue* v = FindConfigValue(section, key);
+		return v && v->isPattern;
 	}
 	static inline std::string GetConfigString(const std::string& section, const std::string& key)
 	{
-		if (!bAddressesRead)
-			Init();
-
-		// Get string from section
-		return gLoadedConfig->get(section, key, std::string());
+		const ConfigValue* v = FindConfigValue(section, key);
+		return v ? v->text : std::string();
 	}
 	static inline uint32_t GetAddressFromConfig(const std::string& section, const std::string& key)
 	{
-		if (!bAddressesRead)
-			Init();
+		ConfigValue* v = const_cast<ConfigValue*>(FindConfigValue(section, key));
 
-		// Get string from section
-		std::string str = gLoadedConfig->get(section, key, std::string());
-
-		if (str.empty())
+		if (!v)
 		{
 			MessageBoxA(NULL, std::string("Address for section ").append(section).append(" and key ").append(key).append(" was not found in the config file for version ").append(std::to_string(gCurrentExeVersion)).append("!").c_str(), "IVSDK", MB_ICONERROR);
 			exit(1);
 			return 0;
 		}
 
-		if (str.find("0x") == 0 || str.find("0X") == 0)
-		{
-			// Try convert string to uint32_t
-			uint32_t num = static_cast<uint32_t>(std::stoul(str, nullptr, 16));
+		if (!v->isPattern)
+			return v->value;
 
-			return num;
-		}
-		else
+		// Patterns are scanned once, on first use (unchanged behaviour: returns the dword at the match)
+		AcquireSRWLockExclusive(&gPatternLock);
+		if (!v->resolved)
 		{
-			// Try getting the address from the pattern
-			auto scan = hook::pattern(str);
+			auto scan = hook::pattern(v->text);
 
 			assert(!scan.empty());
 
-			return *(uint32_t*)scan.get_first(0);
+			v->value = *(uint32_t*)scan.get_first(0);
+			v->resolved = true;
 		}
+		uint32_t value = v->value;
+		ReleaseSRWLockExclusive(&gPatternLock);
 
-		return 0;
+		return value;
 	}
 
 	// Note that the base address is added here and 0x400000 is not subtracted, so rebase your .idb to 0x0 or subtract it yourself

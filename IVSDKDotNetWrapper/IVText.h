@@ -27,5 +27,8 @@ namespace IVSDKDotNet
 
 	internal:
 		CText* NativeText;
+
+	private:
+		static void WriteLabelText(wchar_t* label, String^ newText, String^ labelName);
 	};
 }
