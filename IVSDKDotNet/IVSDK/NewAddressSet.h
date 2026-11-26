@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace AddressSetter
 {
@@ -13,28 +14,44 @@ namespace AddressSetter
 	// All config values, resolved once by Init() into a read-only table. Lookups never touch the INI parser
 	// afterwards: INI::get(section, key) selects the section through a shared pointer, so concurrent lookups
 	// (game and render thread) could read a key from the wrong section, and parsing on every call is slow.
+	// Lookups hash the section/key C strings directly (no std::string temporaries, no allocation) and probe a
+	// flat open-addressing table: hundreds of call sites resolve their address on every call (e.g. per draw).
 	struct ConfigValue
 	{
+		std::string section;
+		std::string key;
 		std::string text;		// raw value from the config file
 		uint32_t value = 0;		// parsed address (patterns: resolved on first use)
 		bool isPattern = false;
 		bool resolved = false;
 	};
-	static std::unordered_map<std::string, ConfigValue> gConfigValues;
+	struct ConfigSlot
+	{
+		uint32_t hash;
+		ConfigValue* value;		// nullptr = empty slot
+	};
+	static std::vector<ConfigValue> gConfigValues;	// storage (not resized after the table is built)
+	static std::vector<ConfigSlot> gConfigTable;	// power-of-two sized, at most 50% full
 	static SRWLOCK gPatternLock = SRWLOCK_INIT;
 
-	static inline std::string MakeConfigKey(const std::string& section, const std::string& key)
+	static inline uint32_t HashConfigKey(const char* section, const char* key)
 	{
-		std::string k;
-		k.reserve(section.size() + key.size() + 1);
-		k.append(section).push_back('\x1F');
-		k.append(key);
-		return k;
+		// FNV-1a over "section\x1Fkey"
+		uint32_t h = 2166136261u;
+		for (; *section; ++section) { h ^= (uint8_t)*section; h *= 16777619u; }
+		h ^= 0x1Fu; h *= 16777619u;
+		for (; *key; ++key) { h ^= (uint8_t)*key; h *= 16777619u; }
+		return h;
 	}
 	static inline void BuildConfigCache()
 	{
+		size_t count = 0;
+		for (auto& section : gLoadedConfig->sections)
+			if (section.second)
+				count += section.second->size();
+
 		gConfigValues.clear();
-		gConfigValues.reserve(1024);
+		gConfigValues.reserve(count);
 
 		for (auto& section : gLoadedConfig->sections)
 		{
@@ -44,6 +61,8 @@ namespace AddressSetter
 			for (auto& entry : *section.second)
 			{
 				ConfigValue v;
+				v.section = section.first;
+				v.key = entry.first;
 				v.text = entry.second;
 				v.isPattern = !(v.text.rfind("0x", 0) == 0 || v.text.rfind("0X", 0) == 0);
 
@@ -53,8 +72,24 @@ namespace AddressSetter
 					v.resolved = true;
 				}
 
-				gConfigValues.emplace(MakeConfigKey(section.first, entry.first), std::move(v));
+				gConfigValues.push_back(std::move(v));
 			}
+		}
+
+		size_t tableSize = 16;
+		while (tableSize < count * 2)
+			tableSize <<= 1;
+
+		gConfigTable.assign(tableSize, ConfigSlot{ 0, nullptr });
+		const size_t mask = tableSize - 1;
+
+		for (ConfigValue& v : gConfigValues)
+		{
+			uint32_t h = HashConfigKey(v.section.c_str(), v.key.c_str());
+			size_t i = h & mask;
+			while (gConfigTable[i].value)
+				i = (i + 1) & mask;
+			gConfigTable[i] = ConfigSlot{ h, &v };
 		}
 	}
 
@@ -174,28 +209,48 @@ namespace AddressSetter
 		bAddressesRead = true;
 	}
 
-	static inline const ConfigValue* FindConfigValue(const std::string& section, const std::string& key)
+	static inline ConfigValue* FindConfigValue(const char* section, const char* key)
 	{
 		if (!bAddressesRead)
 			Init();
 
-		auto it = gConfigValues.find(MakeConfigKey(section, key));
-		return it == gConfigValues.end() ? nullptr : &it->second;
+		if (gConfigTable.empty())
+			return nullptr;
+
+		const uint32_t h = HashConfigKey(section, key);
+		const size_t mask = gConfigTable.size() - 1;
+
+		for (size_t i = h & mask; ; i = (i + 1) & mask)
+		{
+			const ConfigSlot& slot = gConfigTable[i];
+			if (!slot.value)
+				return nullptr;
+			if (slot.hash == h && slot.value->section == section && slot.value->key == key)
+				return slot.value;
+		}
 	}
 
-	static inline bool IsConfigPattern(const std::string& section, const std::string& key)
+	static inline bool IsConfigPattern(const char* section, const char* key)
 	{
 		const ConfigValue* v = FindConfigValue(section, key);
 		return v && v->isPattern;
 	}
-	static inline std::string GetConfigString(const std::string& section, const std::string& key)
+	static inline bool IsConfigPattern(const std::string& section, const std::string& key)
+	{
+		return IsConfigPattern(section.c_str(), key.c_str());
+	}
+	static inline std::string GetConfigString(const char* section, const char* key)
 	{
 		const ConfigValue* v = FindConfigValue(section, key);
 		return v ? v->text : std::string();
 	}
-	static inline uint32_t GetAddressFromConfig(const std::string& section, const std::string& key)
+	static inline std::string GetConfigString(const std::string& section, const std::string& key)
 	{
-		ConfigValue* v = const_cast<ConfigValue*>(FindConfigValue(section, key));
+		return GetConfigString(section.c_str(), key.c_str());
+	}
+	static inline uint32_t GetAddressFromConfig(const char* section, const char* key)
+	{
+		ConfigValue* v = FindConfigValue(section, key);
 
 		if (!v)
 		{
@@ -222,6 +277,10 @@ namespace AddressSetter
 		ReleaseSRWLockExclusive(&gPatternLock);
 
 		return value;
+	}
+	static inline uint32_t GetAddressFromConfig(const std::string& section, const std::string& key)
+	{
+		return GetAddressFromConfig(section.c_str(), key.c_str());
 	}
 
 	// Note that the base address is added here and 0x400000 is not subtracted, so rebase your .idb to 0x0 or subtract it yourself
@@ -266,9 +325,14 @@ namespace AddressSetter
 	}
 
 	template<typename T>
-	static inline T& GetRef(const std::string& section, const std::string& key)
+	static inline T& GetRef(const char* section, const char* key)
 	{
 		return GetRef<T>(GetAddressFromConfig(section, key));
+	}
+	template<typename T>
+	static inline T& GetRef(const std::string& section, const std::string& key)
+	{
+		return GetRef<T>(GetAddressFromConfig(section.c_str(), key.c_str()));
 	}
 
 	static inline uint32_t Get(uint32_t addr1070, uint32_t addr1080)
@@ -306,9 +370,13 @@ namespace AddressSetter
 
 		return gBaseAddress + addr;
 	}
-	static inline uint32_t Get(const std::string& section, const std::string& key)
+	static inline uint32_t Get(const char* section, const char* key)
 	{
 		return Get(GetAddressFromConfig(section, key));
+	}
+	static inline uint32_t Get(const std::string& section, const std::string& key)
+	{
+		return Get(GetAddressFromConfig(section.c_str(), key.c_str()));
 	}
 
 }

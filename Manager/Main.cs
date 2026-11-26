@@ -1273,7 +1273,7 @@ namespace Manager
         // If the current thread is already the main thread, the native will get invoked directly
         public override void DispatchNativeCall(uint hash, UIntPtr contextPointer)
         {
-            if (!ThreadManager.IsGameThreadDataAvailable(GameThread.MainThread))
+            if (!ThreadManager.IsMainThreadKnown())
             {
 #if DEBUG
                 Helper.BreakInDebugger();

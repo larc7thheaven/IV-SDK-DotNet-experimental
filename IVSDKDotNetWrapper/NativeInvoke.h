@@ -198,7 +198,8 @@ public:
 	static inline R Invoke(eNativeHash hash)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Invoke the call
 		DispatchedInvoke((uint32_t)hash, cxt);
@@ -206,8 +207,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -215,7 +215,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -226,8 +227,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -235,7 +235,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -247,8 +248,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -256,7 +256,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2, T3 p3)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -269,8 +270,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -278,7 +278,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2, T3 p3, T4 p4)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -292,8 +293,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -302,7 +302,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -317,8 +318,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -327,7 +327,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -343,8 +344,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -353,7 +353,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -370,8 +371,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -380,7 +380,8 @@ public:
 	static inline R Invoke(eNativeHash hash, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, T8 p8)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -398,8 +399,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -409,7 +409,8 @@ public:
 		T9 p9)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -428,8 +429,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -440,7 +440,8 @@ public:
 		T9 p9, T10 p10)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -460,8 +461,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -472,7 +472,8 @@ public:
 		T9 p9, T10 p10, T11 p11)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -493,8 +494,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -505,7 +505,8 @@ public:
 		T9 p9, T10 p10, T11 p11, T12 p12)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -527,8 +528,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -539,7 +539,8 @@ public:
 		T9 p9, T10 p10, T11 p11, T12 p12, T13 p13)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -562,8 +563,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -574,7 +574,8 @@ public:
 		T9 p9, T10 p10, T11 p11, T12 p12, T13 p13, T14 p14)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -598,8 +599,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -611,7 +611,8 @@ public:
 		T9 p9, T10 p10, T11 p11, T12 p12, T13 p13, T14 p14, T15 p15)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -636,8 +637,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 
@@ -649,7 +649,8 @@ public:
 		T9 p9, T10 p10, T11 p11, T12 p12, T13 p13, T14 p14, T15 p15, T16 p16)
 	{
 		// Create new native context
-		CNativeContext* cxt = new CNativeContext();
+		CNativeContext cxtStorage; // on the stack: the call is synchronous, no heap allocation per native call
+		CNativeContext* cxt = &cxtStorage;
 
 		// Push arguments to call
 		cxt->Push(p1);
@@ -675,8 +676,7 @@ public:
 		// Get result
 		R result = cxt->GetResult<R>();
 
-		// Delete the context and return the result
-		delete cxt;
+		// Return the result
 		return result;
 	}
 

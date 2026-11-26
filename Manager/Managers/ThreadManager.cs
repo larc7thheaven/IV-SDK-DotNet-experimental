@@ -22,6 +22,9 @@ namespace Manager.Managers
         private static ConcurrentDictionary<int, UIntPtr> temporaryThreadTlsContextStorage;
         private static ConcurrentDictionary<GameThread, ThreadData> gameThreadDataStorage;
 
+        // Managed ID of the game's main thread, cached because it is checked for every native call (-1 = unknown)
+        private static volatile int mainThreadId = -1;
+
         private static ConcurrentQueue<Action> mainThreadActionQueue;
         private static ConcurrentQueue<Action> renderThreadActionQueue;
         #endregion
@@ -48,6 +51,7 @@ namespace Manager.Managers
                 return;
 
             wasInitialized = false;
+            mainThreadId = -1;
 
             if (threads != null)
             {
@@ -197,6 +201,9 @@ namespace Manager.Managers
             {
                 gameThreadDataStorage[thread].UpdateTlsContext(TlsHelper.GetTlsContext());
             }
+
+            if (thread == GameThread.MainThread && gameThreadDataStorage.TryGetValue(thread, out ThreadData data))
+                mainThreadId = data.ThreadID;
         }
 
         // - - - TLS CONTEXT STUFF - - -
@@ -340,8 +347,8 @@ namespace Manager.Managers
         {
             if (!wasInitialized)
                 return null;
-            if (gameThreadDataStorage.ContainsKey(thread))
-                return gameThreadDataStorage[thread];
+            if (gameThreadDataStorage.TryGetValue(thread, out ThreadData data))
+                return data;
 
             return null;
         }
@@ -361,7 +368,15 @@ namespace Manager.Managers
         /// <returns><see langword="true"/>if the current thread is the main thread. Otherwise, <see langword="false"/>.</returns>
         public static bool IsCurrentThreadTheMainThread()
         {
-            return GetCurrentThreadID() == GetGameThreadData(GameThread.MainThread).ThreadID;
+            int id = mainThreadId;
+            return id != -1 && GetCurrentThreadID() == id;
+        }
+        /// <summary>
+        /// Checks if the main thread is known yet (cheap equivalent of <c>IsGameThreadDataAvailable(GameThread.MainThread)</c>).
+        /// </summary>
+        public static bool IsMainThreadKnown()
+        {
+            return mainThreadId != -1;
         }
         /// <summary>
         /// Checks if the current thread is the render thread.

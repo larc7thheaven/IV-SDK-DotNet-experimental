@@ -17,7 +17,8 @@ public:
 
 	static uint32_t FindNativeAddress(uint32_t nativeHash)
 	{
-		uint32_t funcPtr = AddressSetter::Get("CTheScripts", "FindNativeAddress");
+		// Resolved once: this runs for every native call
+		static const uint32_t funcPtr = AddressSetter::Get("CTheScripts", "FindNativeAddress");
 		
 		uint32_t nativePtr;
 #ifdef IVSDK_CE
